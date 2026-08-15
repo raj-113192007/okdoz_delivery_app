@@ -1,0 +1,67 @@
+{
+  "project_info": {
+    "project_number": "202322666213",
+    "project_id": "okdoz-878da",
+    "storage_bucket": "okdoz-878da.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:202322666213:android:3bfd8bafccd34863f4aa0c",
+        "android_client_info": {
+          "package_name": "com.example.ok_doz_usr_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBJqMwUANcFH0-J2tjT_UPPVtP5Z6Pkedw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:202322666213:android:3acbb5d60c22d2a0f4aa0c",
+        "android_client_info": {
+          "package_name": "com.example.okdoz_delivery_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBJqMwUANcFH0-J2tjT_UPPVtP5Z6Pkedw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:202322666213:android:e8d2ceb6d781cbc2f4aa0c",
+        "android_client_info": {
+          "package_name": "com.example.okdoz_restaurant_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBJqMwUANcFH0-J2tjT_UPPVtP5Z6Pkedw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
