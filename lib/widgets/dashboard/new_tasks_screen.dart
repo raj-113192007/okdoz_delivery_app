@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../screens/job_details_screen.dart';
@@ -78,7 +79,103 @@ class _NewTasksScreenState extends State<NewTasksScreen> {
 
         const SizedBox(height: 24),
 
-        // Incoming Orders from Firestore
+        // Assigned Courier Orders from Firestore
+        if (_isOnline) ...[
+          StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('courier_orders')
+                .where('status', isEqualTo: 'price_set')
+                .snapshots(),
+            builder: (context, snapshot) {
+              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) return const SizedBox.shrink();
+              final currentUid = FirebaseAuth.instance.currentUser?.uid;
+              final docs = snapshot.data!.docs.where((d) {
+                final data = d.data() as Map<String, dynamic>;
+                final agentId = data['delivery_agent_id']?.toString();
+                return agentId == null || agentId.isEmpty || agentId == currentUid;
+              }).toList();
+
+              if (docs.isEmpty) return const SizedBox.shrink();
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.only(bottom: 12.0),
+                    child: Text(
+                      'Assigned Courier Requests',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFFFF9800)),
+                    ),
+                  ),
+                  ...docs.map((doc) {
+                    final data = doc.data() as Map<String, dynamic>;
+                    final price = data['delivery_price'] ?? data['total_amount'] ?? 0;
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 16),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: const Color(0xFFFF9800), width: 2),
+                        boxShadow: [BoxShadow(color: const Color(0xFFFF9800).withValues(alpha: 0.15), blurRadius: 10)],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                decoration: BoxDecoration(color: Colors.amber.shade100, borderRadius: BorderRadius.circular(20)),
+                                child: Text('COURIER #${doc.id.substring(0, 5).toUpperCase()}', style: TextStyle(color: Colors.amber.shade900, fontWeight: FontWeight.bold, fontSize: 12)),
+                              ),
+                              Text('₹$price', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.green)),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          _buildTimelineRow('Pickup', '${data['sender_name'] ?? 'Sender'} (${data['pickup_address'] ?? 'No Address'})', 'Pickup'),
+                          const Padding(
+                            padding: EdgeInsets.only(left: 12.0),
+                            child: SizedBox(height: 16, child: VerticalDivider(color: Colors.grey, thickness: 2)),
+                          ),
+                          _buildTimelineRow('Drop', '${data['receiver_name'] ?? 'Receiver'} (${data['drop_address'] ?? 'No Address'})', 'Drop-off'),
+                          const SizedBox(height: 16),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              icon: const Icon(Icons.two_wheeler, color: Colors.white),
+                              label: const Text('Accept & Start Delivery', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFFFF9800),
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                              onPressed: () async {
+                                await FirebaseFirestore.instance.collection('courier_orders').doc(doc.id).update({
+                                  'status': 'out_for_delivery',
+                                  'picked_up_at': FieldValue.serverTimestamp(),
+                                });
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Courier trip started! Track delivery in Active tab.')),
+                                  );
+                                }
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ).animate().fadeIn().slideY(begin: 0.1);
+                  }),
+                  const Divider(height: 32),
+                ],
+              );
+            },
+          ),
+        ],
+
+        // Incoming Food & Store Orders from Firestore
         if (_isOnline)
           StreamBuilder<QuerySnapshot>(
             stream: FirebaseFirestore.instance.collection('orders').where('status', isEqualTo: 'Ready').snapshots(),

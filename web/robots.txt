@@ -1,0 +1,28 @@
+# Robots.txt for Search Engines (Google, Bing, Yahoo, Yandex, DuckDuckGo)
+User-agent: *
+Allow: /
+Disallow: /private/
+Disallow: /api/
+Disallow: /build/
+
+# Search Engine Bots
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: Slurp
+Allow: /
+
+User-agent: DuckDuckBot
+Allow: /
+
+User-agent: Baiduspider
+Allow: /
+
+User-agent: Yandex
+Allow: /
+
+# Sitemap Location
+Sitemap: https://rider.okdoz.in/sitemap.xml

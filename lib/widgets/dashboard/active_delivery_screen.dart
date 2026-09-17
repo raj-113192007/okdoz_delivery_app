@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -95,8 +96,90 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
               
               final docs = snapshot.data?.docs ?? [];
               if (docs.isEmpty) {
-                _stopLocationTracking(); // No active order, stop tracking
-                return const Center(child: Text("No active deliveries.", style: TextStyle(color: Colors.grey)));
+                return StreamBuilder<QuerySnapshot>(
+                  stream: FirebaseFirestore.instance
+                      .collection('courier_orders')
+                      .where('status', isEqualTo: 'out_for_delivery')
+                      .snapshots(),
+                  builder: (context, courierSnapshot) {
+                    if (courierSnapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    final currentUid = FirebaseAuth.instance.currentUser?.uid;
+                    final courierDocs = (courierSnapshot.data?.docs ?? []).where((d) {
+                      final cData = d.data() as Map<String, dynamic>;
+                      final agentId = cData['delivery_agent_id']?.toString();
+                      return agentId == null || agentId.isEmpty || agentId == currentUid;
+                    }).toList();
+
+                    if (courierDocs.isEmpty) {
+                      _stopLocationTracking();
+                      return const Center(child: Text("No active deliveries.", style: TextStyle(color: Colors.grey)));
+                    }
+
+                    final cDoc = courierDocs.first;
+                    final cData = cDoc.data() as Map<String, dynamic>;
+                    final price = cData['delivery_price'] ?? cData['total_amount'] ?? 0;
+
+                    return Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(20),
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.only(topLeft: Radius.circular(30), topRight: Radius.circular(30)),
+                        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, -5))],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text("Courier in Transit", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                decoration: BoxDecoration(color: Colors.amber.shade100, borderRadius: BorderRadius.circular(10)),
+                                child: Text("COURIER #${cDoc.id.substring(0, 5).toUpperCase()}", style: TextStyle(color: Colors.amber.shade900, fontWeight: FontWeight.bold)),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            leading: CircleAvatar(backgroundColor: Colors.amber.shade800, child: const Icon(Icons.local_shipping, color: Colors.white)),
+                            title: Text("Receiver: ${cData['receiver_name'] ?? 'Recipient'}", style: const TextStyle(fontWeight: FontWeight.bold)),
+                            subtitle: Text("Drop: ${cData['drop_address'] ?? 'Address'}\nPhone: ${cData['receiver_phone'] ?? 'N/A'}"),
+                            trailing: Text("₹$price", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.green)),
+                          ),
+                          const Divider(),
+                          Text("Status: Out for Delivery | Sender: ${cData['sender_name'] ?? 'N/A'}", style: const TextStyle(color: Colors.grey, fontSize: 13)),
+                          const Spacer(),
+                          SizedBox(
+                            width: double.infinity,
+                            height: 60,
+                            child: ElevatedButton(
+                              onPressed: () async {
+                                await FirebaseFirestore.instance.collection('courier_orders').doc(cDoc.id).update({
+                                  'status': 'delivered',
+                                  'delivered_at': FieldValue.serverTimestamp(),
+                                });
+                                _stopLocationTracking();
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Courier Marked as Delivered! Great job!")));
+                                }
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                              ),
+                              child: const Text("Mark Courier Delivered", style: TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold)),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                );
               }
               
               final doc = docs.first;

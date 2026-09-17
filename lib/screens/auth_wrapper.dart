@@ -21,8 +21,8 @@ class AuthWrapper extends ConsumerWidget {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Scaffold(body: Center(child: CircularProgressIndicator()));
               }
-              final status = snapshot.data ?? 'pending';
-              if (status == 'approved') {
+              final status = (snapshot.data ?? 'pending_approval').toLowerCase();
+              if (status == 'approved' || status == 'active') {
                 return const DashboardScreen();
               } else {
                 return const WaitingScreen();

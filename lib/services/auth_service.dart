@@ -17,9 +17,49 @@ class AuthService {
   // Stream to listen to the partner's status
   Stream<String> getPartnerStatus(String uid) {
     return _firestore.collection('delivery_partners').doc(uid).snapshots().map((doc) {
-      if (!doc.exists) return 'pending';
-      return doc.data()?['status'] as String? ?? 'pending';
+      if (!doc.exists) return 'pending_approval';
+      final status = doc.data()?['status'] as String?;
+      return (status ?? 'pending_approval').toLowerCase();
     });
+  }
+
+  // Register new partner with Email, Phone, Password and Profile
+  Future<String?> registerPartner({
+    required String name,
+    required String email,
+    required String phone,
+    required String password,
+    String vehicleType = 'Bike',
+  }) async {
+    try {
+      final userCredential = await _auth.createUserWithEmailAndPassword(
+        email: email.trim(),
+        password: password,
+      );
+      final user = userCredential.user;
+      if (user != null) {
+        await user.updateDisplayName(name.trim());
+        await _firestore.collection('delivery_partners').doc(user.uid).set({
+          'uid': user.uid,
+          'name': name.trim(),
+          'displayName': name.trim(),
+          'email': email.trim(),
+          'phone': phone.trim(),
+          'phoneNumber': phone.trim(),
+          'category': 'Delivery Partners',
+          'status': 'pending_approval',
+          'vehicleType': vehicleType,
+          'isOnline': false,
+          'createdAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      }
+      return null;
+    } on FirebaseAuthException catch (e) {
+      return e.message;
+    } catch (e) {
+      return e.toString();
+    }
   }
 
   // Sign in with email and password
