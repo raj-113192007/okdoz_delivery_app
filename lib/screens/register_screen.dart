@@ -1,23 +1,27 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import '../services/auth_service.dart';
+import 'auth_wrapper.dart';
 
-class RegisterScreen extends StatefulWidget {
+class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
 
   @override
-  State<RegisterScreen> createState() => _RegisterScreenState();
+  ConsumerState<RegisterScreen> createState() => _RegisterScreenState();
 }
 
-class _RegisterScreenState extends State<RegisterScreen> {
+class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
-  final _otpController = TextEditingController();
+
+  String _selectedVehicle = 'Bike';
+  final List<String> _vehicleTypes = ['Bike', 'Scooter', 'Electric Bike', 'Car', 'Van'];
 
   bool _isLoading = false;
-  String? _verificationId;
 
   // Password condition states
   bool _hasMinLength = false;
@@ -38,64 +42,84 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _nameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
-    _otpController.dispose();
     super.dispose();
   }
 
   void _checkPasswordStrength() {
     final password = _passwordController.text;
     setState(() {
-      _hasMinLength = password.length >= 8;
+      _hasMinLength = password.length >= 6;
       _hasUppercase = password.contains(RegExp(r'[A-Z]'));
       _hasNumber = password.contains(RegExp(r'[0-9]'));
       _hasSpecialChar = password.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'));
     });
   }
 
-  void _sendOTP() async {
-    // Disabled validation for UI testing
-    /*
+  bool _isPasswordValid() {
+    return _passwordController.text.length >= 6;
+  }
+
+  void _handleRegister() async {
+    final name = _nameController.text.trim();
+    final email = _emailController.text.trim();
     final phone = _phoneController.text.trim();
-    if (phone.isEmpty || phone.length < 10) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Enter a valid phone number with country code (e.g., +91)')));
+    final password = _passwordController.text;
+    final confirmPassword = _confirmPasswordController.text;
+
+    if (name.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter your full name.')));
+      return;
+    }
+
+    if (email.isEmpty || !email.contains('@')) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter a valid email address.')));
+      return;
+    }
+
+    if (phone.isEmpty || phone.replaceAll(RegExp(r'[^0-9]'), '').length < 10) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter a valid 10-digit mobile number.')));
       return;
     }
 
     if (!_isPasswordValid()) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please meet all password requirements.')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Password must be at least 6 characters long.')));
       return;
     }
 
-    if (_passwordController.text != _confirmPasswordController.text) {
+    if (password != confirmPassword) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Passwords do not match.')));
       return;
     }
-    */
 
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(seconds: 1)); // Mock delay
-    
-    setState(() {
-      _verificationId = 'mock_verification_id';
-      _isLoading = false;
-    });
-    
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Mock OTP Sent!')));
-    }
-  }
 
-  void _verifyAndRegister() async {
-    if (_verificationId == null) return;
-    
-    setState(() => _isLoading = true);
-    await Future.delayed(const Duration(seconds: 1)); // Mock delay
-    
+    final error = await ref.read(authServiceProvider).registerPartner(
+      name: name,
+      email: email,
+      phone: phone,
+      password: password,
+      vehicleType: _selectedVehicle,
+    );
+
+    if (!mounted) return;
     setState(() => _isLoading = false);
-    
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Registered Successfully (UI Only)')));
-      Navigator.pop(context); // Go back to login
+
+    if (error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error), backgroundColor: Colors.red),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Registration submitted! Awaiting admin approval.'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const AuthWrapper()),
+        (route) => false,
+      );
     }
   }
 
@@ -129,11 +153,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Widget _buildConditionRow(String text, bool isMet) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8.0),
+      padding: const EdgeInsets.symmetric(vertical: 2.0),
       child: Row(
         children: [
           Icon(
-            isMet ? Icons.check_circle : Icons.circle_outlined,
+            isMet ? Icons.check_circle : Icons.cancel,
             color: isMet ? Colors.green : Colors.grey,
             size: 16,
           ),
@@ -142,7 +166,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             text,
             style: TextStyle(
               color: isMet ? Colors.green : Colors.grey,
-              fontSize: 14,
+              fontSize: 12,
             ),
           ),
         ],
@@ -157,8 +181,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black),
-        title: const Text('Partner Registration', style: TextStyle(color: Colors.black)),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          onPressed: () => Navigator.pop(context),
+        ),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
@@ -166,84 +192,127 @@ class _RegisterScreenState extends State<RegisterScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const Text(
-              'Join OK DOZ Delivery Team!',
+              'Join OK DOZ Delivery Fleet',
               style: TextStyle(
-                fontSize: 28,
+                fontSize: 26,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFFFF9800),
+                color: Colors.black,
               ),
-            ).animate().fadeIn(duration: 500.ms).slideY(begin: -0.2, end: 0),
-            
-            const SizedBox(height: 10),
+            ).animate().fadeIn().slideY(begin: -0.2, end: 0),
+            const SizedBox(height: 8),
             const Text(
-              'Fill in your details to start earning.',
-              style: TextStyle(color: Colors.grey, fontSize: 16),
+              'Create your partner profile to get started and receive orders.',
+              style: TextStyle(color: Colors.grey, fontSize: 14),
             ).animate().fadeIn(delay: 200.ms).slideY(begin: -0.2, end: 0),
             
-            const SizedBox(height: 32),
+            const SizedBox(height: 28),
 
-            if (_verificationId == null) ...[
-              _buildTextField(controller: _nameController, label: 'Full Name', icon: Icons.person).animate().fadeIn(delay: 300.ms).slideX(begin: 0.2, end: 0),
-              const SizedBox(height: 16),
-              _buildTextField(controller: _emailController, label: 'Email', icon: Icons.email_outlined, keyboardType: TextInputType.emailAddress).animate().fadeIn(delay: 400.ms).slideX(begin: 0.2, end: 0),
-              const SizedBox(height: 16),
-              _buildTextField(controller: _phoneController, label: 'Mobile Number (e.g. +91...)', icon: Icons.phone, keyboardType: TextInputType.phone).animate().fadeIn(delay: 500.ms).slideX(begin: 0.2, end: 0),
-              const SizedBox(height: 16),
-              _buildTextField(controller: _passwordController, label: 'Password', icon: Icons.lock_outline, isPassword: true).animate().fadeIn(delay: 600.ms).slideX(begin: 0.2, end: 0),
-              
-              // Dynamic Password Strength Checker
-              const SizedBox(height: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildConditionRow('At least 8 characters', _hasMinLength),
-                  _buildConditionRow('At least 1 uppercase letter', _hasUppercase),
-                  _buildConditionRow('At least 1 number', _hasNumber),
-                  _buildConditionRow('At least 1 special character', _hasSpecialChar),
-                ],
-              ).animate().fadeIn(delay: 650.ms),
+            _buildTextField(
+              controller: _nameController,
+              label: 'Full Name',
+              icon: Icons.person,
+            ).animate().fadeIn(delay: 300.ms).slideX(begin: 0.2, end: 0),
+            const SizedBox(height: 16),
 
-              const SizedBox(height: 16),
-              _buildTextField(controller: _confirmPasswordController, label: 'Confirm Password', icon: Icons.lock_outline, isPassword: true).animate().fadeIn(delay: 700.ms).slideX(begin: 0.2, end: 0),
-              const SizedBox(height: 32),
-              ElevatedButton(
-                onPressed: _isLoading ? null : _sendOTP,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFFF9800),
-                  foregroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            _buildTextField(
+              controller: _emailController,
+              label: 'Email Address',
+              icon: Icons.email_outlined,
+              keyboardType: TextInputType.emailAddress,
+            ).animate().fadeIn(delay: 400.ms).slideX(begin: 0.2, end: 0),
+            const SizedBox(height: 16),
+
+            _buildTextField(
+              controller: _phoneController,
+              label: 'Mobile Number (e.g. 9876543210)',
+              icon: Icons.phone,
+              keyboardType: TextInputType.phone,
+            ).animate().fadeIn(delay: 500.ms).slideX(begin: 0.2, end: 0),
+            const SizedBox(height: 16),
+
+            // Vehicle Type Selector
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey.shade400),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  value: _selectedVehicle,
+                  isExpanded: true,
+                  icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFFFF9800)),
+                  items: _vehicleTypes.map((type) {
+                    return DropdownMenuItem<String>(
+                      value: type,
+                      child: Row(
+                        children: [
+                          const Icon(Icons.two_wheeler, color: Color(0xFFFF9800), size: 20),
+                          const SizedBox(width: 12),
+                          Text('Vehicle: $type', style: const TextStyle(fontSize: 15, color: Colors.black87)),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                  onChanged: (val) {
+                    if (val != null) setState(() => _selectedVehicle = val);
+                  },
                 ),
-                child: _isLoading 
-                    ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.black))
-                    : const Text('Send OTP', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              ).animate().fadeIn(delay: 800.ms).scale(),
-            ] else ...[
-              const Text(
-                'Enter the OTP sent to your mobile number.',
-                style: TextStyle(color: Colors.black, fontSize: 16),
-              ).animate().fadeIn(),
-              const SizedBox(height: 24),
-              _buildTextField(
-                controller: _otpController, 
-                label: 'OTP Code', 
-                icon: Icons.message, 
-                keyboardType: TextInputType.number
-              ).animate().fadeIn().slideX(),
-              const SizedBox(height: 32),
-              ElevatedButton(
-                onPressed: _isLoading ? null : _verifyAndRegister,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFFF9800),
-                  foregroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ).animate().fadeIn(delay: 550.ms),
+            const SizedBox(height: 16),
+
+            _buildTextField(
+              controller: _passwordController,
+              label: 'Password',
+              icon: Icons.lock_outline,
+              isPassword: true,
+            ).animate().fadeIn(delay: 600.ms).slideX(begin: 0.2, end: 0),
+            
+            // Dynamic Password Strength Checker
+            const SizedBox(height: 10),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildConditionRow('At least 6 characters', _hasMinLength),
+                _buildConditionRow('Contains uppercase letter', _hasUppercase),
+                _buildConditionRow('Contains a number', _hasNumber),
+                _buildConditionRow('Contains special character', _hasSpecialChar),
+              ],
+            ).animate().fadeIn(delay: 650.ms),
+
+            const SizedBox(height: 16),
+            _buildTextField(
+              controller: _confirmPasswordController,
+              label: 'Confirm Password',
+              icon: Icons.lock_outline,
+              isPassword: true,
+            ).animate().fadeIn(delay: 700.ms).slideX(begin: 0.2, end: 0),
+            const SizedBox(height: 28),
+
+            ElevatedButton(
+              onPressed: _isLoading ? null : _handleRegister,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFF9800),
+                foregroundColor: Colors.black,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: _isLoading 
+                  ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.black))
+                  : const Text('Register as Delivery Partner', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            ).animate().fadeIn(delay: 800.ms).scale(),
+            
+            const SizedBox(height: 20),
+            Center(
+              child: TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text(
+                  'Already have an account? Login',
+                  style: TextStyle(color: Colors.grey, fontSize: 14),
                 ),
-                child: _isLoading 
-                    ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.black))
-                    : const Text('Verify & Register', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              ).animate().fadeIn().scale(),
-            ]
+              ),
+            ),
           ],
         ),
       ),

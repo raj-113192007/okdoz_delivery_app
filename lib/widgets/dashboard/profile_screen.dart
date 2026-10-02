@@ -1,64 +1,88 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import '../../services/auth_service.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.all(20.0),
-      children: [
-        Center(
-          child: Column(
-            children: [
-              const CircleAvatar(
-                radius: 50,
-                backgroundColor: Color(0xFFFF9800),
-                child: Icon(Icons.person, size: 60, color: Colors.white),
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = FirebaseAuth.instance.currentUser;
+    final uid = user?.uid;
+
+    return StreamBuilder<DocumentSnapshot>(
+      stream: uid != null
+          ? FirebaseFirestore.instance.collection('delivery_partners').doc(uid).snapshots()
+          : null,
+      builder: (context, snapshot) {
+        final data = snapshot.data?.data() as Map<String, dynamic>?;
+        final name = data?['name'] ?? user?.displayName ?? 'Delivery Partner';
+        final phone = data?['phone'] ?? user?.phoneNumber ?? 'No Phone';
+        final vehicle = data?['vehicleType'] ?? 'Bike';
+
+        return ListView(
+          padding: const EdgeInsets.all(20.0),
+          children: [
+            Center(
+              child: Column(
+                children: [
+                  const CircleAvatar(
+                    radius: 50,
+                    backgroundColor: Color(0xFFFF9800),
+                    child: Icon(Icons.person, size: 60, color: Colors.white),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(name, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 4),
+                  Text(phone, style: const TextStyle(fontSize: 14, color: Colors.grey)),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(color: Colors.green[100], borderRadius: BorderRadius.circular(20)),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text("Active Rider ", style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+                        Icon(Icons.verified, color: Colors.green, size: 16),
+                      ],
+                    ),
+                  )
+                ],
               ),
-              const SizedBox(height: 16),
-              const Text("Ramesh Kumar", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(color: Colors.green[100], borderRadius: BorderRadius.circular(20)),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text("4.9 ", style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
-                    Icon(Icons.star, color: Colors.green, size: 16),
-                  ],
-                ),
-              )
-            ],
-          ),
-        ).animate().fadeIn().slideY(begin: -0.1),
-        
-        const SizedBox(height: 32),
-        
-        _buildProfileOption(context, Icons.motorcycle, "Vehicle Details", "Honda Activa (KA-01-AB-1234)"),
-        _buildProfileOption(context, Icons.history, "Delivery History", "View past trips"),
-        _buildProfileOption(context, Icons.settings, "App Settings", "Language, Theme, Notifications", onTap: () => _showSettingsDialog(context)),
-        _buildProfileOption(context, Icons.help_outline, "Help & Support", "Contact dispatch or read FAQs"),
-        
-        const SizedBox(height: 32),
-        
-        ElevatedButton(
-          onPressed: () {
-             ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Mock Logout Successful!")));
-             Navigator.pushReplacementNamed(context, '/auth');
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.white,
-            foregroundColor: Colors.red,
-            side: const BorderSide(color: Colors.red),
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))
-          ),
-          child: const Text("Logout", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        ).animate().fadeIn(delay: 500.ms)
-      ],
+            ).animate().fadeIn().slideY(begin: -0.1),
+            
+            const SizedBox(height: 32),
+            
+            _buildProfileOption(context, Icons.motorcycle, "Vehicle Details", vehicle),
+            _buildProfileOption(context, Icons.history, "Delivery History", "View past trips"),
+            _buildProfileOption(context, Icons.settings, "App Settings", "Language, Theme, Notifications", onTap: () => _showSettingsDialog(context)),
+            _buildProfileOption(context, Icons.help_outline, "Help & Support", "Contact dispatch or read FAQs"),
+            
+            const SizedBox(height: 32),
+            
+            ElevatedButton(
+              onPressed: () async {
+                await ref.read(authServiceProvider).signOut();
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Logged out successfully.")));
+                  Navigator.pushReplacementNamed(context, '/auth');
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: Colors.red,
+                side: const BorderSide(color: Colors.red),
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))
+              ),
+              child: const Text("Logout", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            ).animate().fadeIn(delay: 500.ms)
+          ],
+        );
+      },
     );
   }
 
