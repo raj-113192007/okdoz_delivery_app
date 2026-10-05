@@ -156,12 +156,22 @@ class _NewTasksScreenState extends State<NewTasksScreen> {
                             ],
                           ),
                           const SizedBox(height: 12),
-                          _buildTimelineRow('Pickup', '${data['sender_name'] ?? 'Sender'} (${data['pickup_address'] ?? 'No Address'})', 'Pickup'),
+                          _buildTimelineRow(
+                            Icons.radio_button_checked,
+                            Colors.blue,
+                            'Pickup: ${data['sender_name'] ?? 'Sender'}',
+                            data['pickup_address'] ?? 'No Address',
+                          ),
                           const Padding(
                             padding: EdgeInsets.only(left: 12.0),
                             child: SizedBox(height: 16, child: VerticalDivider(color: Colors.grey, thickness: 2)),
                           ),
-                          _buildTimelineRow('Drop', '${data['receiver_name'] ?? 'Receiver'} (${data['drop_address'] ?? 'No Address'})', 'Drop-off'),
+                          _buildTimelineRow(
+                            Icons.location_on,
+                            Colors.redAccent,
+                            'Drop-off: ${data['receiver_name'] ?? 'Receiver'}',
+                            data['drop_address'] ?? 'No Address',
+                          ),
                           const SizedBox(height: 16),
                           SizedBox(
                             width: double.infinity,

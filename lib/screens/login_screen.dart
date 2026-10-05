@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'register_screen.dart';
@@ -69,6 +70,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   void _verifyOTP() async {
     if (_verificationId == null) return;
+    final otp = _otpController.text.trim();
+    if (otp.length != 6) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter a valid 6-digit OTP.')));
+      return;
+    }
     setState(() => _isLoading = true);
     
     await Future.delayed(const Duration(seconds: 1)); // Mock delay
@@ -87,11 +93,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     required IconData icon,
     bool isPassword = false,
     TextInputType keyboardType = TextInputType.text,
+    List<TextInputFormatter>? inputFormatters,
+    int? maxLength,
   }) {
     return TextField(
       controller: controller,
       obscureText: isPassword,
       keyboardType: keyboardType,
+      inputFormatters: inputFormatters,
+      maxLength: maxLength,
+      buildCounter: (context, {required currentLength, required isFocused, maxLength}) => null,
       style: const TextStyle(color: Colors.black),
       decoration: InputDecoration(
         labelText: label,
@@ -176,6 +187,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             controller: _identifierController, 
                             label: 'Phone Number or Email', 
                             icon: Icons.person_outline, 
+                            maxLength: 80,
                           ).animate().fadeIn(delay: 200.ms),
                           
                           const SizedBox(height: 20),
@@ -231,7 +243,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               controller: _passwordController, 
                               label: 'Password', 
                               icon: Icons.lock_outline, 
-                              isPassword: true
+                              isPassword: true,
+                              maxLength: 64,
                             ).animate().fadeIn(),
                             const SizedBox(height: 24),
                             ElevatedButton(
@@ -265,7 +278,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 controller: _otpController, 
                                 label: 'Enter OTP', 
                                 icon: Icons.message, 
-                                keyboardType: TextInputType.number
+                                keyboardType: TextInputType.number,
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.digitsOnly,
+                                  LengthLimitingTextInputFormatter(6),
+                                ],
+                                maxLength: 6,
                               ).animate().fadeIn(),
                               const SizedBox(height: 24),
                               ElevatedButton(
@@ -293,6 +311,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               style: TextStyle(color: Colors.grey, fontSize: 14),
                             ),
                           ).animate().fadeIn(delay: 600.ms),
+                          const SizedBox(height: 8),
+                          const Center(
+                            child: Text(
+                              'v1.1.0 (Latest)',
+                              style: TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.w500),
+                            ),
+                          ),
                         ],
                       ),
                     ),

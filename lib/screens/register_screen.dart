@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../services/auth_service.dart';
@@ -76,8 +77,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       return;
     }
 
-    if (phone.isEmpty || phone.replaceAll(RegExp(r'[^0-9]'), '').length < 10) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter a valid 10-digit mobile number.')));
+    final phoneDigits = phone.replaceAll(RegExp(r'[^0-9]'), '');
+    if (phoneDigits.length != 10 || !RegExp(r'^[6-9]\d{9}$').hasMatch(phoneDigits)) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter a valid 10-digit mobile number starting with 6-9.')));
       return;
     }
 
@@ -129,11 +131,16 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     required IconData icon,
     bool isPassword = false,
     TextInputType keyboardType = TextInputType.text,
+    List<TextInputFormatter>? inputFormatters,
+    int? maxLength,
   }) {
     return TextField(
       controller: controller,
       obscureText: isPassword,
       keyboardType: keyboardType,
+      inputFormatters: inputFormatters,
+      maxLength: maxLength,
+      buildCounter: (context, {required currentLength, required isFocused, maxLength}) => null,
       style: const TextStyle(color: Colors.black),
       decoration: InputDecoration(
         labelText: label,
@@ -211,6 +218,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               controller: _nameController,
               label: 'Full Name',
               icon: Icons.person,
+              maxLength: 50,
             ).animate().fadeIn(delay: 300.ms).slideX(begin: 0.2, end: 0),
             const SizedBox(height: 16),
 
@@ -219,6 +227,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               label: 'Email Address',
               icon: Icons.email_outlined,
               keyboardType: TextInputType.emailAddress,
+              maxLength: 80,
             ).animate().fadeIn(delay: 400.ms).slideX(begin: 0.2, end: 0),
             const SizedBox(height: 16),
 
@@ -227,6 +236,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               label: 'Mobile Number (e.g. 9876543210)',
               icon: Icons.phone,
               keyboardType: TextInputType.phone,
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+                LengthLimitingTextInputFormatter(10),
+              ],
+              maxLength: 10,
             ).animate().fadeIn(delay: 500.ms).slideX(begin: 0.2, end: 0),
             const SizedBox(height: 16),
 
@@ -267,6 +281,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               label: 'Password',
               icon: Icons.lock_outline,
               isPassword: true,
+              maxLength: 64,
             ).animate().fadeIn(delay: 600.ms).slideX(begin: 0.2, end: 0),
             
             // Dynamic Password Strength Checker
@@ -287,6 +302,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               label: 'Confirm Password',
               icon: Icons.lock_outline,
               isPassword: true,
+              maxLength: 64,
             ).animate().fadeIn(delay: 700.ms).slideX(begin: 0.2, end: 0),
             const SizedBox(height: 28),
 
