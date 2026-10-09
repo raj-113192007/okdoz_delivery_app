@@ -7,12 +7,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'firebase_options.dart';
 import 'screens/splash_screen.dart';
 import 'screens/auth_wrapper.dart';
+import 'services/crash_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  await CrashService.initialize(appRole: 'delivery');
 
   // Enable Firestore offline disk caching
   FirebaseFirestore.instance.settings = const Settings(
@@ -22,14 +24,16 @@ void main() async {
 
   if (!kIsWeb) {
     try {
+      // ignore: deprecated_member_use
       await FirebaseAppCheck.instance.activate(
+        // ignore: deprecated_member_use
         androidProvider: kDebugMode ? AndroidProvider.debug : AndroidProvider.playIntegrity,
+        // ignore: deprecated_member_use
         appleProvider: kDebugMode ? AppleProvider.debug : AppleProvider.appAttest,
       );
     } catch (e) {
       debugPrint('Firebase AppCheck initialization skipped: $e');
     }
-  }
   }
   runApp(
     const ProviderScope(
