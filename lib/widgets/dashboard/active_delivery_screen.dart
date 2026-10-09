@@ -5,7 +5,6 @@ import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 class ActiveDeliveryScreen extends StatefulWidget {
   const ActiveDeliveryScreen({super.key});
@@ -197,6 +196,30 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
                           ),
                           const Divider(),
                           Text("Status: Out for Delivery | Sender: ${cData['sender_name'] ?? 'N/A'}", style: const TextStyle(color: Colors.grey, fontSize: 13)),
+                          if ((cData['latest_customer_message'] ?? '').toString().isNotEmpty) ...[
+                            const SizedBox(height: 8),
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.shade50,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.blue.shade200),
+                              ),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Icon(Icons.chat_bubble_outline_rounded, size: 16, color: Colors.blue.shade800),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      "Customer Note: ${cData['latest_customer_message']}",
+                                      style: TextStyle(fontSize: 13, color: Colors.blue.shade900, fontWeight: FontWeight.w600),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                           const Spacer(),
                           SizedBox(
                             width: double.infinity,
