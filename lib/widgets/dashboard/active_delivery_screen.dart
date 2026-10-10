@@ -23,9 +23,12 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
     super.dispose();
   }
 
-  Future<void> _startLocationTracking(String orderId) async {
+  bool _isCourierActive = false;
+
+  Future<void> _startLocationTracking(String orderId, {bool isCourier = false}) async {
     if (_positionStream != null && _activeOrderId == orderId) return; // Already tracking
     _activeOrderId = orderId;
+    _isCourierActive = isCourier;
 
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
@@ -40,7 +43,8 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
           ),
         ).listen((Position position) {
           if (_activeOrderId != null) {
-            FirebaseFirestore.instance.collection('orders').doc(_activeOrderId).update({
+            final targetCollection = _isCourierActive ? 'courier_orders' : 'orders';
+            FirebaseFirestore.instance.collection(targetCollection).doc(_activeOrderId).update({
               'delivery_location': {
                 'lat': position.latitude,
                 'lng': position.longitude,
@@ -163,6 +167,8 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
                     final cDoc = courierDocs.first;
                     final cData = cDoc.data() as Map<String, dynamic>;
                     final price = cData['delivery_price'] ?? cData['total_amount'] ?? 0;
+
+                    _startLocationTracking(cDoc.id, isCourier: true);
 
                     return Container(
                       width: double.infinity,
